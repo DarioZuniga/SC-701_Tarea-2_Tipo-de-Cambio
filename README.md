@@ -45,3 +45,13 @@ Abre **dos terminales** en la carpeta raíz del proyecto:
 **Terminal 1 (Backend / API):**
 ```powershell
 dotnet run --project .\PAW.API\PAW.API.csproj
+
+(El puerto por defecto configurado es http://localhost:5146).
+
+**Terminal 2 (Frontend / Web):**
+
+```powershell
+dotnet run --project .\PAW.Web\PAW.Web.csproj
+(El puerto de la web puede variar, revisa la consola. Ej: http://localhost:5252).
+
+Una vez corriendo ambos, abre tu navegador en la URL de la Web y haz clic en la pestaña "Tareas".
