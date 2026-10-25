@@ -1,0 +1,112 @@
+@{
+    ViewData["Title"] = "Tareas";
+}
+
+<div class="container mt-4" id="contenedor-tareas">
+    <!-- Aquí el JS va a crear todo automáticamente -->
+</div>
+
+@section Scripts {
+    <script>
+        const API_URL = 'http://localhost:5146/api/tasks';
+
+        // 1. Creamos el HTML desde JavaScript para asegurar que exista
+        function crearInterfaz() {
+            const contenedor = document.getElementById('contenedor-tareas');
+            if (!contenedor) return;
+
+            contenedor.innerHTML = `
+                <h2>CRUD de Tareas (Minimal API)</h2>
+                <div class="input-group mb-4 w-50">
+                    <input type="text" id="taskName" class="form-control" placeholder="Escribe una nueva tarea...">
+                    <button class="btn btn-primary" onclick="addTask()">Agregar</button>
+                </div>
+                <ul id="taskList" class="list-group w-75"></ul>
+            `;
+        }
+
+        // 2. Ejecutamos al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            crearInterfaz(); // Primero creamos el HTML
+            loadTasks();     // Luego cargamos los datos
+        });
+
+        async function loadTasks() {
+            try {
+                const res = await fetch(API_URL);
+                const tasks = await res.json();
+                
+                // Ahora el #taskList SÍ va a existir
+                const list = document.getElementById('taskList');
+                if (!list) {
+                    console.error("Aún no se encuentra el #taskList");
+                    return;
+                }
+
+                list.innerHTML = '';
+                
+                if (!tasks || tasks.length === 0) {
+                    list.innerHTML = '<li class="list-group-item">No hay tareas pendientes.</li>';
+                    return;
+                }
+
+                tasks.forEach(t => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    
+                    const span = document.createElement('span');
+                    const isCompleted = (t.status || "").toLowerCase().includes("complet");
+                    span.textContent = t.name || "Sin nombre";
+                    if (isCompleted) span.style.textDecoration = 'line-through';
+
+                    const divBtns = document.createElement('div');
+                    
+                    const btnToggle = document.createElement('button');
+                    btnToggle.className = 'btn btn-sm btn-warning me-2';
+                    btnToggle.textContent = isCompleted ? 'Desmarcar' : 'Completar';
+                    btnToggle.onclick = () => toggleTask(t.id, isCompleted ? 'Pendiente' : 'Completada', t.name);
+
+                    const btnDelete = document.createElement('button');
+                    btnDelete.className = 'btn btn-sm btn-danger';
+                    btnDelete.textContent = 'Eliminar';
+                    btnDelete.onclick = () => deleteTask(t.id);
+
+                    divBtns.appendChild(btnToggle);
+                    divBtns.appendChild(btnDelete);
+                    li.appendChild(span);
+                    li.appendChild(divBtns);
+                    list.appendChild(li);
+                });
+            } catch (error) {
+                console.error("Error cargando tareas:", error);
+            }
+        }
+
+        async function addTask() {
+            const name = document.getElementById('taskName').value;
+            if (!name) return;
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, description: "", status: "Pendiente" })
+            });
+            document.getElementById('taskName').value = '';
+            loadTasks();
+        }
+
+        async function toggleTask(id, newStatus, name) {
+            await fetch(`${API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, name: name, description: "", status: newStatus })
+            });
+            loadTasks();
+        }
+
+        async function deleteTask(id) {
+            if (!confirm('¿Seguro que quieres eliminar esta tarea?')) return;
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            loadTasks();
+        }
+    </script>
+}

@@ -1,31 +1,56 @@
-using PAW.DataAccess.MSSQL;
+using Task = PAW.Models.Task;
 using PAW.DataAccess.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// 1. Inyección de Dependencias (Requerido por la tarea)
+builder.Services.AddSingleton<TaskRepository>();
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// 2. CORS (Para que la Web pueda conectarse)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddDbContext<ProductDbContext>();
-
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseCors("AllowAll");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// 3. Endpoints de la Minimal API 
+app.MapGet("/api/tasks", (TaskRepository repo) =>
+    Results.Ok(repo.GetAll()));
 
-app.UseAuthorization();
+app.MapGet("/api/tasks/{id}", (int id, TaskRepository repo) =>
+{
+    var task = repo.GetById(id);
+    return task is not null ? Results.Ok(task) : Results.NotFound();
+});
 
-app.MapControllers();
+app.MapPost("/api/tasks", (Task task, TaskRepository repo) =>
+{
+    var created = repo.Add(task);
+    return Results.Created($"/api/tasks/{created.Id}", created);
+});
+
+app.MapPut("/api/tasks/{id}", (int id, Task task, TaskRepository repo) =>
+{
+    task.Id = id;
+    return repo.Update(task) ? Results.NoContent() : Results.NotFound();
+});
+
+app.MapDelete("/api/tasks/{id}", (int id, TaskRepository repo) =>
+{
+    return repo.Delete(id) ? Results.NoContent() : Results.NotFound();
+});
 
 app.Run();
